@@ -2,6 +2,7 @@ package Fav_I.IdolBom.Service;
 
 import Fav_I.IdolBom.DTO.GetTokenDTO;
 import Fav_I.IdolBom.DTO.KakaoUserDTO;
+import Fav_I.IdolBom.Entity.User;
 import Fav_I.IdolBom.Repository.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -17,6 +18,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
+
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -78,10 +81,19 @@ public class LoginService {
                 .build();
     }
 
-    public void register(KakaoUserDTO userInfo) {
-        userRepository.findById(userInfo.getId()).orElseGet(() -> {
-            userRepository.save(userInfo.toEntity()); // toEntity 메서드 호출
-            return userInfo.toEntity();
-        });
+    public Optional<User> register(KakaoUserDTO kakaoUserDTO) {
+        Long id = kakaoUserDTO.getId();
+        Optional<User> userInfo = userRepository.findById(id);
+
+        // Register
+        log.info(userInfo.toString());
+        if (userInfo.isEmpty()) {
+            User newUser = new User();
+            newUser.setId(id);
+            newUser.setUserName(kakaoUserDTO.getNickname());
+            newUser.setProfileImage(kakaoUserDTO.getProfile_image());
+            userRepository.save(newUser);
+        }
+        return userInfo;
     }
 }
