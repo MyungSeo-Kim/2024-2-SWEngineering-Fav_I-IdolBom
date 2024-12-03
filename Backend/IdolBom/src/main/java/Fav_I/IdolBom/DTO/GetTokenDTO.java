@@ -2,11 +2,9 @@ package Fav_I.IdolBom.DTO;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
 
 @Data
-public class getTokenDTO {
+public class GetTokenDTO {
 
     @JsonProperty("access_token")
     public String accessToken;

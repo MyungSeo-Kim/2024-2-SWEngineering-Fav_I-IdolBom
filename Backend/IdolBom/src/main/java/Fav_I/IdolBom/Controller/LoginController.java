@@ -1,138 +1,85 @@
 package Fav_I.IdolBom.Controller;
 
-import Fav_I.IdolBom.DTO.getTokenDTO;
-import Fav_I.IdolBom.DTO.kakaoUserDTO;
-import Fav_I.IdolBom.Entity.User;
-import Fav_I.IdolBom.Service.KakaoService;
+import Fav_I.IdolBom.DTO.GetTokenDTO;
+import Fav_I.IdolBom.DTO.KakaoUserDTO;
+import Fav_I.IdolBom.Service.LoginService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.IOException;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
 
 @RestController
 @Slf4j
 @RequiredArgsConstructor
+@RequestMapping("/auth")
 public class LoginController {
-    private final KakaoService kakaoService;
-    @Autowired
-    private HttpSession session;
+    private final LoginService loginService;
+    private final HttpSession session;
 
-    // get kakaoCode without Frontend
-    /*@GetMapping("/callback")
-    public ResponseEntity<?> RegisterLogin(@RequestParam("code") String code) throws IOException {
-        Map<String, Object> response = new LinkedHashMap<>();
-        User loginUser = new User();
-
-        try {
-            getTokenDTO accessToken = kakaoService.getAccessTokenFromKakao(code);
-            kakaoUserDTO userInfo = kakaoService.getKakaoInfo(accessToken.getAccessToken());
-            log.info(userInfo.toString());
-            kakaoService.register(userInfo);
-
-            loginUser.setId(userInfo.getId());
-            loginUser.setUserName(userInfo.getNickname());
-            loginUser.setProfileImage(userInfo.getProfile_image());
-
-            session.setAttribute("userInfo", loginUser);
-            session.setMaxInactiveInterval(60 * 60 * 24);
-            log.info(session.toString());
-
-            response.put("code", "SU");
-            response.put("message", "Success.");
-            response.put("loginUser", loginUser);
-            return ResponseEntity.status(HttpStatus.OK).body(response);
-        } catch (Exception e) {
-            response.put("code", "Error");
-            response.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
-
-    }*/
-
-    // api with front (get code)
-    //@GetMapping("/login")
-    /*
-    public ResponseEntity<?> RegisterLogin(@RequestBody String code) throws IOException {
-
-        //
-        log.info("Authorization Code Received: {}", code);
-        //
-
-        getTokenDTO accessToken = kakaoService.getAccessTokenFromKakao(code); //
-        kakaoUserDTO userInfo = kakaoService.getKakaoInfo(accessToken.getAccessToken()); //
-        log.info(userInfo.toString());
-        kakaoService.register(userInfo);
-        session.setAttribute("userInfo", userInfo); //
-        session.setMaxInactiveInterval(60 * 60 * 24); //
-        return ResponseEntity.ok(userInfo); //
-    }*/
-
+    // 카카오 Redirect URI에서 GET 요청 처리
     @GetMapping("/callback")
     public ResponseEntity<?> handleCallback(@RequestParam("code") String code) {
+        log.info("GET /callback - Authorization Code: {}", code);
+
         Map<String, Object> response = new LinkedHashMap<>();
         try {
-            log.info("GET Request Received. Authorization Code: {}", code);
-            // 카카오 토큰 요청
-            getTokenDTO accessToken = kakaoService.getAccessTokenFromKakao(code);
+            // 카카오 서버에서 Access Token 요청
+            GetTokenDTO accessToken = loginService.getAccessTokenFromKakao(code);
 
-            log.info("kakao accessToken : {}", accessToken);
-            // 사용자 정보 요청
-            kakaoUserDTO userInfo = kakaoService.getKakaoInfo(accessToken.getAccessToken());
-            log.info(userInfo.toString());
+            // Access Token으로 사용자 정보 요청
+            KakaoUserDTO userInfo = loginService.getKakaoInfo(accessToken.getAccessToken());
 
-            // 사용자 등록
-            kakaoService.register(userInfo);
+            // 사용자 등록 또는 갱신
+            loginService.register(userInfo);
+
+            // 세션에 사용자 정보 저장
             session.setAttribute("userInfo", userInfo);
-            session.setMaxInactiveInterval(60 * 60 * 24); // 24시간
 
-
-            // 응답 데이터 구성
             response.put("code", "SU");
-            response.put("message", "Success");
+            response.put("message", "로그인 성공");
             response.put("userInfo", userInfo);
-            response.put("authCode", code);
 
-            log.info("Response Data: {}", response);
-            return ResponseEntity.status(HttpStatus.OK).body(response); // 메타데이터 포함
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            log.error("Error during callback processing", e);
+            log.error("Error during GET callback processing", e);
             response.put("code", "Error");
             response.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
 
+    // 프론트엔드에서 POST 요청 처리
+    @PostMapping("/callback")
+    public ResponseEntity<?> handleAuthorizationCode(@RequestBody Map<String, String> requestBody) {
+        String code = requestBody.get("code");
+        log.info("POST /callback - Authorization Code: {}", code);
 
-    @GetMapping("/idol/{idol_id}")
-    public ResponseEntity<?> setIdol(@PathVariable("idol_id") int idol_id) {
         Map<String, Object> response = new LinkedHashMap<>();
-        Object currentUser = session.getAttribute("userInfo");
-
         try {
-            kakaoService.setIdol((User)currentUser, idol_id);
+            // 카카오 서버에서 Access Token 요청
+            GetTokenDTO accessToken = loginService.getAccessTokenFromKakao(code);
+
+            // Access Token으로 사용자 정보 요청
+            KakaoUserDTO userInfo = loginService.getKakaoInfo(accessToken.getAccessToken());
+
+            // 사용자 등록 또는 갱신
+            loginService.register(userInfo);
+
             response.put("code", "SU");
-            response.put("message", "idol set successfully.");
-            response.put("loginUser", ((User) currentUser).getId());
-            response.put("userName", ((User) currentUser).getUserName());
-            response.put("idol_id", idol_id);
-            return ResponseEntity.status(HttpStatus.OK).body(response);
+            response.put("message", "로그인 성공");
+            response.put("userInfo", userInfo);
+
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
+            log.error("Error during POST callback processing", e);
             response.put("code", "Error");
             response.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
-
     }
-
-
-
 }

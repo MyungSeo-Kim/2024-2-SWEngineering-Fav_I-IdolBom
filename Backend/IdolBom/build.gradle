@@ -47,6 +47,12 @@ dependencies {
 	// jboss-logging to resolve Hibernate dependency issues
 	implementation 'org.jboss.logging:jboss-logging:3.5.3.Final'
 
+
+
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+
+
+
 }
 
 tasks.named('test') {
